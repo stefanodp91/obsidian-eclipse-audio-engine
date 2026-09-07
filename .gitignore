@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+.vite/
+samples/*/dist/
+coverage/
+*.tgz
+.DS_Store
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+**/*service-account*.json
+**/*service_account*.json
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.mobileprovision
+*.pem
+*.key
