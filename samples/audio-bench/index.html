@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>audio-bench — obsidian-eclipse-audio-engine</title>
+<style>
+  :root { color-scheme: dark; --ink: #e8eef2; --dim: #8fa3ad; --line: #1e2a31; --accent: #4fd1c5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: #0b1216; color: var(--ink);
+         font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .04em; }
+  p.sub { margin: 0 0 16px; color: var(--dim); font-size: 12px; }
+  section { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--dim);
+       margin: 0 0 10px; font-weight: 600; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+  .row span { color: var(--dim); }
+  .row b { font-weight: 600; }
+  .alarm { color: #ff6b6b; }
+  .buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  button { appearance: none; border: 1px solid var(--line); background: #121d23; color: var(--ink);
+           border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  button:active { background: #1b2a32; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-word; color: var(--dim);
+        font-size: 11px; max-height: 34vh; overflow: auto; }
+</style>
+</head>
+<body>
+  <h1>audio-bench</h1>
+  <p class="sub">obsidian-eclipse-audio-engine — the same controls, and the same behavior, on every platform.</p>
+
+  <section>
+    <h2>what the platform is actually doing</h2>
+    <div id="status"></div>
+  </section>
+
+  <section>
+    <h2>music</h2>
+    <div class="buttons">
+      <button data-action="playA">play A (hard cut)</button>
+      <button data-action="crossfadeToB">crossfade → B</button>
+      <button data-action="crossfadeToA">crossfade → A</button>
+      <button data-action="duck">duck 1.2 s</button>
+      <button data-action="level" data-arg="0.4">level 40%</button>
+      <button data-action="level" data-arg="1">level 100%</button>
+      <button data-action="stop">stop</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>cues, lifecycle</h2>
+    <div class="buttons">
+      <button data-action="cue">cue</button>
+      <button data-action="mute">toggle mute</button>
+      <button data-action="suspend">suspend</button>
+      <button data-action="resume">resume</button>
+      <button data-action="autoStart">try autostart</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>log</h2>
+    <pre id="log"></pre>
+  </section>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
