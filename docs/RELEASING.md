@@ -3,6 +3,18 @@
 GitHub Releases and the GitHub Pages sample are deployed automatically from semantic-version tags.
 The deployment workflow does not publish the package to npm.
 
+## What earns a release
+
+**A release must carry a runtime change.** Documentation, comments, release guides and repository
+policy never become a version of their own: they wait on `main` and ship with the next patch that
+changes behavior. A version that a consumer cannot act on still costs everyone who sees it a
+decision — read the notes, bump the dependency, re-verify the build — and returns nothing.
+
+`main` sitting ahead of the last tag is therefore the normal state, not a gap to close. The sibling
+graphic engine paid for the opposite reading on 2026-09-08: a documentation-only patch was published
+and then withdrawn, and withdrawing it meant rebuilding the artifacts of the version that absorbed
+it, whose checksums no longer match the ones its consumers had pinned.
+
 ## Prepare a release
 
 1. Choose the next version using semantic versioning.
