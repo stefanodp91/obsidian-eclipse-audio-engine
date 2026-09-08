@@ -7,7 +7,13 @@ The deployment workflow does not publish the package to npm.
 
 1. Choose the next version using semantic versioning.
 2. Update the `version` field in the root manifest, the package manifest and the sample manifest.
-3. Run `npm install --package-lock-only` so `package-lock.json` records the same workspace versions.
+3. Regenerate `package-lock.json` with a full `npm install` from an absent `node_modules`, so it
+   records the same workspace versions **and every platform binary**. Do not use
+   `npm install --package-lock-only` against an existing `node_modules`: npm then writes only the
+   optional binaries for the current platform, the lockfile builds locally, and `npm ci` fails on
+   the release runner with `Cannot find module @rollup/rollup-linux-x64-gnu`. Check the result with
+   `grep -c '"node_modules/@rollup/rollup-' package-lock.json`, which must report every published
+   variant rather than one.
 4. Update the changelog when the release contains behavior changes.
 5. Run `npm ci` followed by `npm run check` from a clean checkout.
 6. Package a local candidate with
