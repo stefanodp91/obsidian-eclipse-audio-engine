@@ -66,12 +66,17 @@ because it is volume rather than filtering.
 On a Capacitor host nothing changes: the same graph runs inside the WebView. That is a measured
 decision — see [music playback](wiki/music-playback.md).
 
-## Documentation
+## Design boundary
 
-- [Architecture](wiki/architecture.md)
-- [Engine lifecycle](wiki/engine-lifecycle.md)
-- [Music playback](wiki/music-playback.md)
-- [Audio assets](wiki/audio-assets.md)
+- The application layer owns everything that must be identical on every platform.
+- The driven ports name no platform type; the Web Audio adapters implement them.
+- A host-supplied transport is injected through a port, never selected by a branch inside the
+  engine.
+
+Prefer the declared package exports; avoid deep imports into `src/`, which is not public API.
+
+Read the [core engine documentation](wiki/index.md) for architecture, lifecycle, music playback and
+audio asset guides.
 
 ## License
 
