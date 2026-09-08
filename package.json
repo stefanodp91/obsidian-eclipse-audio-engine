@@ -19,7 +19,9 @@
     "build": "npm run build --workspace obsidian-eclipse-audio-engine && npm run build --workspace @obsidian-eclipse/sample-audio-bench",
     "test": "npm test --workspace obsidian-eclipse-audio-engine",
     "typecheck": "npm run typecheck --workspace obsidian-eclipse-audio-engine && npm run build --workspace obsidian-eclipse-audio-engine",
-    "check": "npm run typecheck && npm test && npm run build",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:sensitive": "node scripts/check-sensitive.mjs",
+    "check": "npm run check:sensitive && npm run typecheck && npm test && npm run check:docs && npm run build",
     "pack:dry-run": "npm pack --dry-run --workspace obsidian-eclipse-audio-engine",
     "dev": "npm run dev --workspace @obsidian-eclipse/sample-audio-bench"
   }
