@@ -1,6 +1,6 @@
 {
   "name": "obsidian-eclipse-audio-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Independent game audio engine: one behaviour on Web Audio, Android and iOS, with the machinery in the library and the content in the game.",
   "type": "module",
   "license": "MIT",

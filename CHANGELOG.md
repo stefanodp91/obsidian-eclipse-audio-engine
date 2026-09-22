@@ -7,6 +7,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-22
+
 ### Fixed
 
 - A stopped music track gives its decoded buffer back on iOS 26. WebKit never frees an
@@ -14,7 +16,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it points at: a host changing track at every screen leaked one decoded track per change, and on an
   iPhone 13 the web content process was killed after 60-71 changes of a 17.6 MB track. The music
   transport's `stop()` and the cue transport's `releaseHold()` now set the source's buffer to `null`
-  before disconnecting it; the measurement is in `packages/core/wiki/music-playback.md`.
+  before disconnecting it; the measurement is in `packages/core/wiki/music-playback.md`. The change is
+  not audible by design: the buffer is dropped from a source that is already stopped. Verified on an
+  iPhone 13 with iOS 26 on 2026-09-22 in a host application: thirty consecutive full sessions with the
+  same stop behavior in place, against a kill at the eighteenth without it.
 
 ### Changed
 
@@ -47,5 +52,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   points of one core and +4.3% current in a paired ABBA comparison (n=2), and 18-35 MB of RAM per
   decoded track.
 
-[Unreleased]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/releases/tag/v0.1.0
