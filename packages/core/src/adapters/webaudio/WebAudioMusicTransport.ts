@@ -14,6 +14,7 @@
 
 import type { AssetPath, AudioErrorSink, MusicTransport, TrackId } from '../../ports/driven';
 import type { WebAudioGraph } from './WebAudioGraph';
+import { releaseStoppedSource } from './releaseStoppedSource';
 
 interface Voice {
     source: AudioBufferSourceNode;
@@ -91,6 +92,7 @@ export class WebAudioMusicTransport implements MusicTransport {
         } catch {
             /* already stopped */
         }
+        releaseStoppedSource(voice.source);
         try {
             voice.source.disconnect();
             voice.gain.disconnect();

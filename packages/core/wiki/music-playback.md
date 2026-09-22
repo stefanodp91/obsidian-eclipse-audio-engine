@@ -75,6 +75,31 @@ Decoding once and reading from a buffer is not free, and the price is stated so 
 - **+4.2 points of one core and +4.3% current**, paired ABBA comparison, n=2;
 - **18-35 MB of RAM per decoded track**, one track at a time.
 
+"One track at a time" holds only if a stopped track really gives its memory back, and on iOS 26 it
+did not.
+
+## A stopped source must give its buffer back
+
+**Rule.** When a transport stops a source, it sets the source's buffer to `null` before it
+disconnects it (`releaseStoppedSource`).
+
+WebKit on iOS 26 never finishes an `AudioBufferSourceNode` that is stopped and disconnected in the
+same turn. The node stays alive for the life of the page, and so does the buffer it points at: for
+music, the whole decoded track. A host that changes track at every screen leaked one decoded track
+per change, and the web content process was killed after a quarter of an hour of play.
+
+Measured on an iPhone 13 with iOS 26, 2026-09-22, in a host application: one looping AAC track
+decoded to 17.6 MB, played for 0.2 s and stopped, eighty times in a row.
+
+| how the source is stopped | outcome |
+| --- | --- |
+| `stop()`, then `disconnect()` at once | process killed after 60, 65 and 71 decodes, three runs |
+| decoded and never played | all eighty, in 2.5 s |
+| `stop()`, buffer set to `null`, then `disconnect()` | all eighty |
+| `stop()`, `disconnect()` deferred to `onended` | all eighty |
+
+One-shot cues already disconnect on `onended`, and held voices now drop their buffer too.
+
 ## When a host should still bring its own transport
 
 The reasoning above is about content that loops. A host that plays content which *ends* — a stinger,

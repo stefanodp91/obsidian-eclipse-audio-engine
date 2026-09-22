@@ -7,6 +7,15 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- A stopped music track gives its decoded buffer back on iOS 26. WebKit never frees an
+  `AudioBufferSourceNode` that is stopped and disconnected in the same turn, together with the buffer
+  it points at: a host changing track at every screen leaked one decoded track per change, and on an
+  iPhone 13 the web content process was killed after 60-71 changes of a 17.6 MB track. The music
+  transport's `stop()` and the cue transport's `releaseHold()` now set the source's buffer to `null`
+  before disconnecting it; the measurement is in `packages/core/wiki/music-playback.md`.
+
 ### Changed
 
 - State in the release guide that a release must carry a runtime change. Documentation, comments and

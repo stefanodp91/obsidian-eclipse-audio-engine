@@ -7,6 +7,7 @@
 
 import type { AssetPath, AudioErrorSink, CueTransport, TrackId } from '../../ports/driven';
 import type { WebAudioGraph } from './WebAudioGraph';
+import { releaseStoppedSource } from './releaseStoppedSource';
 
 /** Default ramp constants for a held voice. Fast up, slow down: something
  *  entering the frame has to be heard at once, and a voice that stops abruptly
@@ -123,6 +124,7 @@ export class WebAudioCueTransport implements CueTransport {
             } catch {
                 /* already stopped */
             }
+            releaseStoppedSource(voice.source);
             try {
                 voice.source.disconnect();
                 voice.gain.disconnect();
