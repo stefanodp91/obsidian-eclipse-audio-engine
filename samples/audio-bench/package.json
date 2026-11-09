@@ -1,6 +1,6 @@
 {
   "name": "@obsidian-eclipse/sample-audio-bench",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
-    "obsidian-eclipse-audio-engine": "^0.1.0"
+    "obsidian-eclipse-audio-engine": "^0.2.0"
   },
   "devDependencies": {
     "typescript": "^5.4.3",

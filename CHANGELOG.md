@@ -7,7 +7,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Proposed as 0.1.2.
+## [0.2.0] - 2026-11-09
 
 ### Added
 
@@ -80,6 +80,7 @@ Proposed as 0.1.2.
   points of one core and +4.3% current in a paired ABBA comparison (n=2), and 18-35 MB of RAM per
   decoded track.
 
-[Unreleased]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stefanodp91/obsidian-eclipse-audio-engine/releases/tag/v0.1.0
