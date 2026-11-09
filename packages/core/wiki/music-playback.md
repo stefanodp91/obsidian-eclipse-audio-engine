@@ -100,6 +100,71 @@ decoded to 17.6 MB, played for 0.2 s and stopped, eighty times in a row.
 
 One-shot cues already disconnect on `onended`, and held voices now drop their buffer too.
 
+## Changing track on the beat
+
+**Rule.** A change between two tracks that share a tempo is placed by the transport, on the audio
+clock, at a line of the beat grid, and the incoming track starts from the position the outgoing one
+has reached. `music.play(id, path, { alignS, crossfadeMs })` asks for it; `MusicTransport.playAligned`
+does it.
+
+A host with several tracks written over the same accompaniment — one per area of a game, the same
+chord cycle and tempo, a different melody on top — wants the change between them not to be heard.
+Two things make it heard, and only the second one is the transport's to fix:
+
+- the instrument that carries the melody changes, which no timing hides;
+- the change lands off the beat, and the incoming track starts from its top while the outgoing one
+  is in the middle of a bar. Today's crossfade starts the moment it is asked for, which is wherever
+  the host's frame happened to be.
+
+So the change waits. The engine hands it to the transport whole, because only the transport owns the
+clock the music runs on: a start placed from the application layer would land wherever the main
+thread was when it ran, which is precisely what alignment exists to avoid. The Web Audio transport
+schedules everything in one turn on `AudioContext.currentTime`:
+
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Engine as Application layer
+    participant Transport as WebAudioMusicTransport
+    Host->>Engine: play(b, path, alignS 7.5, crossfadeMs 2000)
+    Engine->>Transport: playAligned(b, after a)
+    Note over Transport: a is at 10.2 s, the next line is 15 s
+    Transport->>Transport: b.start(at 15, offset 15), fade in 15 to 17
+    Transport->>Transport: a fades out 15 to 17, a.stop(17)
+    Transport-->>Engine: resolves when a has ended
+    Engine->>Transport: release(a)
+```
+
+- **The line.** The position of the outgoing track is the time since its start, plus the offset it
+  started from, modulo its duration. The change happens at the next instant that position crosses a
+  multiple of `alignS`; the loop seam counts as a line too, so a track whose length is not a
+  multiple of the grid still changes on a downbeat. A line less than 50 ms away is skipped for the
+  next one, because a start placed that close can be in the past by the time the graph reads it,
+  and Web Audio would then start it late at the requested offset, off the beat by the delay.
+- **The position.** The incoming track starts at that instant from the outgoing track's position,
+  modulo its own duration. Two tracks of the same length and tempo therefore stay on the beat.
+- **The fades.** They run on a gain of their own, between the source and the level gain, so a duck or
+  a level change during the wait or the fade moves the level without undoing the change. With
+  `crossfadeMs: 0` it is a cut on the line.
+- **Suspension.** The clock that measures the position is the context's, which stands still while
+  the context is suspended. A change asked for before a suspension happens at the same musical
+  point after the resume.
+
+What a host sees meanwhile: `status().playing` names the incoming track at once; the outgoing one
+stays audible until the line, up to `alignS` seconds later, and `play` resolves when its fade has
+finished. `music.stop()` silences both, a duck reaches both, and an ordinary change made during the
+wait fades both out. A second change on the beat asked for before the first one's line takes its
+place at the same line; asking for the outgoing track again before its line makes the change
+inaudible, because the new voice enters on the line at the position the old one is fading out from.
+
+The cost is the one the rest of this page counts in memory: from the request to the end of the fade
+two decoded tracks are held, not one.
+
+`playAligned` is optional in the port. A transport that cannot place a start on its own clock leaves
+it out, and the engine falls back to the ordinary crossfade; an implementation that started the
+track "about now" would claim an alignment it does not deliver. A grid that is not a finite positive
+number is ignored, and with nothing playing the track starts at once from zero.
+
 ## When a host should still bring its own transport
 
 The reasoning above is about content that loops. A host that plays content which *ends* — a stinger,
@@ -109,4 +174,6 @@ hardware decoding for long files.
 
 That host injects its own implementation through the `musicTransport` option of
 `createAudioEngine()`. The port is public for exactly this reason, and the rules above become its
-acceptance criteria: declare `gaplessLoop` honestly, and do not request compressed audio offload.
+acceptance criteria: declare `gaplessLoop` honestly, do not request compressed audio offload, and
+implement `playAligned` only if the platform can start a track at a given instant from a given
+position.

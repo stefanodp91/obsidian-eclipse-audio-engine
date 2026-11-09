@@ -91,7 +91,15 @@ describe('a stopped source gives its buffer back', () => {
         await music.stop(track);
 
         expect(ctx.sources[0]?.buffer).toBeNull();
-        expect(log).toEqual(['source.stop', 'source.buffer=null', 'source.disconnect', 'gain.disconnect']);
+        // Two gains: the handover (unity unless a change on the beat is
+        // running) and the level.
+        expect(log).toEqual([
+            'source.stop',
+            'source.buffer=null',
+            'source.disconnect',
+            'gain.disconnect',
+            'gain.disconnect',
+        ]);
     });
 
     it('music: release() goes through the same stop', async () => {

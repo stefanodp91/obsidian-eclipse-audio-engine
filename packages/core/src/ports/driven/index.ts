@@ -74,6 +74,34 @@ export interface MusicTransport {
      *  the things every transport does better than its caller.** */
     fade(id: TrackId, to: number, ms: number): Promise<void>;
 
+    /** Changes from the track `after` to `id` **on the beat**, and is
+     *  **optional**: a transport that cannot place a start on its own clock
+     *  leaves it out, and the engine falls back to an ordinary crossfade. Leaving
+     *  it out is the honest answer; an implementation that starts the track
+     *  "about now" would claim an alignment it does not deliver.
+     *
+     *  The change does not happen when it is asked for. It happens at the next
+     *  instant at which the position of `after` — the time elapsed since its
+     *  start, modulo its duration, on the transport's audio clock — crosses a
+     *  multiple of `alignS` (the loop seam counts as one). At that instant `id`
+     *  starts **from the same position**, modulo its own duration, so two tracks
+     *  of the same length and tempo stay on the beat; `id` fades in from 0 to
+     *  `volume` and `after` fades out to 0 over `fadeMs`, both starting there.
+     *  With `fadeMs` 0 it is a cut on the beat.
+     *
+     *  The position runs on the audio clock, not on the system's: while the
+     *  output is suspended the clock stands still, and so does the change.
+     *
+     *  Resolves once `after` has stopped, so the caller may release it. When
+     *  `after` is not playing, `id` starts at once from zero, as `play` does.
+     *  When `after` is itself a change still waiting for its instant, `id` takes
+     *  its place at that same instant and `after` is dropped without having
+     *  sounded. `alignS` must be finite and positive. */
+    playAligned?(
+        id: TrackId,
+        options: { after: TrackId; alignS: number; fadeMs: number; loop: boolean; volume: number },
+    ): Promise<void>;
+
     stop(id: TrackId): Promise<void>;
 
     /** Frees whatever the transport is holding for this id — decoded buffer,

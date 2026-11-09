@@ -59,7 +59,15 @@ await audio.cues.warm([{ id: 'click', path: 'audio/sfx/click.flac' }]);
 audio.cues.play('click');
 ```
 
-Playing a second track crossfades by default; pass `crossfadeMs: 0` for a hard cut. `music.duck()`
+Playing a second track crossfades by default; pass `crossfadeMs: 0` for a hard cut. Tracks that
+share a tempo can change on the beat: `alignS` waits for the next multiple of that many seconds in
+the playing track, starts the new one from the same position and crossfades from there.
+
+```ts
+// Two loops of the same length over the same 7.5 s chord cycle.
+await audio.music.play('chapter-2', 'audio/bgm/chapter-2.m4a', { alignS: 7.5, crossfadeMs: 2000 });
+```
+ `music.duck()`
 pulls the music down under an important cue and lets it back up, and it works on every transport
 because it is volume rather than filtering.
 

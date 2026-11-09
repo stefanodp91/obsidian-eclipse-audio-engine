@@ -46,6 +46,13 @@ signal that is sounding, and twenty steps across eight hundred milliseconds are 
 scratches. The rule that follows is stated once here: **the intersection is not the set of the
 smallest commands, it is the set of the things every transport does better than its caller.**
 
+The change on the beat (`playAligned`) follows the same rule from the other side: placing a start on
+the music's clock is something only the transport can do, since the caller does not own that clock.
+It is the one **optional** member of the port, because a transport that cannot do it must be able to
+say so: leaving it out is that statement, and the application layer then falls back to the ordinary
+crossfade rather than to a start placed "about now". See
+[music playback](music-playback.md#changing-track-on-the-beat).
+
 ## Public surface
 
 | Import | Responsibility | Runtime dependency |

@@ -28,8 +28,23 @@ export interface MusicController {
      *
      *  When something is already playing the change is a **crossfade**, built
      *  on volume ramps so it behaves the same on every transport. Pass
-     *  `crossfadeMs: 0` for a hard cut. */
-    play(id: TrackId, path: AssetPath, options?: { crossfadeMs?: number }): Promise<void>;
+     *  `crossfadeMs: 0` for a hard cut.
+     *
+     *  `alignS` makes the change **on the beat**: it waits for the next
+     *  instant at which the playing track's position crosses a multiple of
+     *  `alignS` seconds, starts `id` from that same position and runs the
+     *  crossfade from there. Two tracks with the same length and tempo then
+     *  stay on the beat across the change: pass the length of a bar or of a
+     *  chord cycle. The wait is up to `alignS`, and the promise resolves once
+     *  the crossfade has finished. With nothing playing, `id` starts at once
+     *  from zero. A transport that cannot align (`MusicTransport.playAligned`
+     *  absent) gets the ordinary crossfade; a value that is not a finite
+     *  positive number is ignored. */
+    play(
+        id: TrackId,
+        path: AssetPath,
+        options?: { crossfadeMs?: number; alignS?: number },
+    ): Promise<void>;
 
     /** Stops and releases the current track. */
     stop(): Promise<void>;

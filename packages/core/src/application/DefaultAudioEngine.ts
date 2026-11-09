@@ -60,6 +60,11 @@ export class DefaultAudioEngine implements AudioEngine {
      *  nobody is listening to any more. */
     private generation = 0;
     private duckTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Tracks still audible after a change on the beat replaced them: they
+     *  play on until the beat, then fade. Counted, because the same id can be
+     *  handed over twice before the first fade ends. Empty unless a host asked
+     *  for `alignS`. */
+    private readonly outgoing = new Map<TrackId, number>();
 
     /** The levels of the two buses, kept here so the library can decide for
      *  itself when there is nothing left to hear. */
@@ -175,12 +180,34 @@ export class DefaultAudioEngine implements AudioEngine {
                 // `setMuted(false)` starts it, which is what a player expects
                 // from unmuting.
                 if (this.deps.graph.isMuted) {
+                    if (this.outgoing.size > 0) await this.stopOutgoing(id);
                     if (previous) await this.quietly(() => this.deps.music.stop(previous), 'stop', previous);
                     if (previous && previous !== id) {
                         await this.quietly(() => this.deps.music.release(previous), 'release', previous);
                     }
                     return;
                 }
+
+                const alignS = options?.alignS;
+                const playAligned = this.deps.music.playAligned?.bind(this.deps.music);
+                if (
+                    previous !== null &&
+                    playAligned &&
+                    alignS !== undefined &&
+                    Number.isFinite(alignS) &&
+                    alignS > 0
+                ) {
+                    await this.handOver(playAligned, id, previous, {
+                        alignS,
+                        fadeMs: Math.max(0, crossfadeMs),
+                        volume: target,
+                    });
+                    return;
+                }
+
+                // A change that does not wait for the beat also takes along
+                // what an earlier one left still sounding.
+                this.fadeOutgoing(id, previous === null ? 0 : crossfadeMs);
 
                 if (previous === null || crossfadeMs <= 0) {
                     if (previous) await this.quietly(() => this.deps.music.stop(previous), 'stop', previous);
@@ -220,6 +247,7 @@ export class DefaultAudioEngine implements AudioEngine {
                 const id = this.current;
                 this.current = null;
                 this.generation += 1;
+                if (this.outgoing.size > 0) await this.stopOutgoing(id);
                 if (!id) return;
                 await this.quietly(() => this.deps.music.stop(id), 'stop', id);
                 await this.quietly(() => this.deps.music.release(id), 'release', id);
@@ -284,9 +312,72 @@ export class DefaultAudioEngine implements AudioEngine {
     }
 
     private pushVolume(): void {
+        // The track a change on the beat is waiting to replace is the one the
+        // listener hears: a duck that skipped it would duck nothing.
+        for (const out of this.outgoing.keys()) {
+            if (out === this.current) continue;
+            void this.quietly(() => this.deps.music.setVolume(out, this.effective()), 'volume', out);
+        }
         const id = this.current;
         if (!id) return;
         void this.quietly(() => this.deps.music.setVolume(id, this.effective()), 'volume', id);
+    }
+
+    // ── the change on the beat ───────────────────────────────────────────
+
+    /** **The transport does the whole change**, start, fades and stop, on its
+     *  own clock: a start placed from up here would land wherever the main
+     *  thread happened to be, which is precisely the thing a change on the beat
+     *  exists to avoid. This layer only keeps the books — which track is still
+     *  audible, so `stop()` and a duck reach it — and releases the old track
+     *  once the transport says it has stopped. */
+    private async handOver(
+        playAligned: NonNullable<MusicTransport['playAligned']>,
+        id: TrackId,
+        previous: TrackId,
+        options: { alignS: number; fadeMs: number; volume: number },
+    ): Promise<void> {
+        this.outgoing.set(previous, (this.outgoing.get(previous) ?? 0) + 1);
+        try {
+            await playAligned(id, { after: previous, loop: true, ...options });
+        } catch (error) {
+            this.fail(error, 'play-aligned', id);
+        } finally {
+            const left = (this.outgoing.get(previous) ?? 0) - 1;
+            if (left > 0) this.outgoing.set(previous, left);
+            else this.outgoing.delete(previous);
+        }
+        // Asked for again while it was fading out: it is the current track
+        // once more, and releasing it would silence it.
+        if (previous === this.current) return;
+        await this.quietly(() => this.deps.music.release(previous), 'release', previous);
+    }
+
+    /** Fades out whatever a change on the beat left sounding, for a change
+     *  that does not wait. The transport stops each one at the end of its own
+     *  fade and the change that started it releases it; this only makes sure
+     *  it is silent by then. `id` is left alone: playing it restarts it. */
+    private fadeOutgoing(id: TrackId, ms: number): void {
+        for (const out of [...this.outgoing.keys()]) {
+            if (out === id) continue;
+            this.outgoing.delete(out);
+            void this.quietly(
+                () => (ms > 0 ? this.deps.music.fade(out, 0, ms) : this.deps.music.stop(out)),
+                ms > 0 ? 'fade' : 'stop',
+                out,
+            );
+        }
+    }
+
+    /** `stop()` means silence, including for a track still waiting for the
+     *  beat to fade out. */
+    private async stopOutgoing(except: TrackId | null): Promise<void> {
+        for (const out of [...this.outgoing.keys()]) {
+            if (out === except) continue;
+            this.outgoing.delete(out);
+            await this.quietly(() => this.deps.music.stop(out), 'stop', out);
+            await this.quietly(() => this.deps.music.release(out), 'release', out);
+        }
     }
 
     /** **The hardware switches itself off when there is nothing left to

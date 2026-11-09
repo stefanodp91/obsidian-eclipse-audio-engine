@@ -7,6 +7,34 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Proposed as 0.1.2.
+
+### Added
+
+- A change of track on the beat. `music.play(id, path, { alignS, crossfadeMs })` waits for the next
+  instant at which the playing track's position — time since its start, modulo its duration, on the
+  `AudioContext` clock — crosses a multiple of `alignS` seconds (the loop seam counts as one), starts
+  the new track there from the same position modulo its own duration, and runs the crossfade from
+  that instant. Two tracks of the same length and tempo stay on the beat across the change. The
+  position stands still while the context is suspended. The transport performs the change through
+  a new optional `MusicTransport.playAligned(id, { after, alignS, fadeMs, loop, volume })`, which
+  `WebAudioMusicTransport` implements by scheduling the start, both fades and the stop on the audio
+  clock in one turn. A transport without it gets the ordinary crossfade; a grid that is not a finite
+  positive number is ignored; with nothing playing the track starts at once from zero. While a
+  change waits for its line, `music.stop()` and `music.duck()` reach the track still sounding, and
+  an ordinary change fades it out. See `packages/core/wiki/music-playback.md`.
+
+### Changed
+
+- Each Web Audio music voice carries a second gain, at unity unless a change on the beat is fading
+  it, so the change never fights a level or a duck. A `play` without `alignS` sounds as before; a
+  host's own transport keeps compiling, since the new port member is optional.
+
+### Known limitations
+
+- Not yet verified by ear on a device. Unit tests cover the scheduling (line, offset, fades, stop,
+  suspension, fallback); the listening check the release guide requires is still to be done.
+
 ## [0.1.1] - 2026-09-22
 
 ### Fixed

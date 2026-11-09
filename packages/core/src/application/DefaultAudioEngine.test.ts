@@ -270,3 +270,184 @@ describe('a level that is not a number', () => {
         expect(music.volumes.at(-1)?.volume).toBe(0);
     });
 });
+
+/** A transport that can also change on the beat. The change itself — where,
+ *  from which position, with which fades — is the transport's and is tested
+ *  there; what is under test here is what the engine asks for, what it does
+ *  meanwhile, and what it releases once the transport reports the old track
+ *  stopped. Each change waits until the test calls `finish()`. */
+class FakeAligningTransport extends FakeMusicTransport {
+    readonly aligned: Array<{
+        id: TrackId;
+        options: { after: TrackId; alignS: number; fadeMs: number; loop: boolean; volume: number };
+    }> = [];
+    private readonly pending: Array<() => void> = [];
+
+    playAligned(
+        id: TrackId,
+        options: { after: TrackId; alignS: number; fadeMs: number; loop: boolean; volume: number },
+    ): Promise<void> {
+        this.aligned.push({ id, options });
+        return new Promise((resolve) => this.pending.push(resolve));
+    }
+
+    /** The outgoing track of the oldest change has stopped. */
+    finish(): void {
+        this.pending.shift()?.();
+    }
+}
+
+/** Lets the engine run up to its next real wait. */
+const settle = async () => {
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+};
+
+describe('a change on the beat', () => {
+    it('hands the whole change to the transport, with the grid and the crossfade', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        music.fades.length = 0;
+        engine.music.setLevel(0.5);
+
+        const change = engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+
+        expect(music.aligned).toEqual([
+            { id: 'b', options: { after: 'a', alignS: 7.5, fadeMs: 2000, loop: true, volume: 0.5 } },
+        ]);
+        // No fade from up here, and no stop: both are placed by the transport
+        // on its own clock.
+        expect(music.fades).toEqual([]);
+        expect(music.stopped).not.toContain('a');
+        expect(engine.status().playing).toBe('b');
+
+        // a is released only once the transport says it has stopped.
+        expect(music.released).not.toContain('a');
+        music.finish();
+        await change;
+        expect(music.released).toEqual(['a']);
+    });
+
+    it('starts at once from zero when nothing is playing', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+
+        await engine.music.play('a', 'audio/a.m4a', { alignS: 7.5 });
+
+        expect(music.aligned).toEqual([]);
+        expect(music.played).toEqual(['a']);
+    });
+
+    it('leaves a play without the option exactly as it was', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        music.fades.length = 0;
+
+        await engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 800 });
+
+        expect(music.aligned).toEqual([]);
+        expect(music.fades).toEqual([
+            { id: 'b', to: 1, ms: 800 },
+            { id: 'a', to: 0, ms: 800 },
+        ]);
+        expect(music.stopped).toContain('a');
+        expect(music.released).toContain('a');
+    });
+
+    it('ignores a grid that is not a finite positive number', async () => {
+        for (const alignS of [0, -7.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+            const music = new FakeAligningTransport();
+            const engine = build(music);
+            await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+            await engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 800, alignS });
+            expect(music.aligned).toEqual([]);
+            expect(music.played).toEqual(['a', 'b']);
+        }
+    });
+
+    it('falls back to the ordinary crossfade on a transport that cannot align', async () => {
+        const music = new FakeMusicTransport(); // no `playAligned`
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        music.fades.length = 0;
+
+        await engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 800, alignS: 7.5 });
+
+        expect(music.fades).toEqual([
+            { id: 'b', to: 1, ms: 800 },
+            { id: 'a', to: 0, ms: 800 },
+        ]);
+        expect(music.released).toContain('a');
+    });
+
+    it('ducks the track still sounding while the change waits for the beat', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        void engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+        music.volumes.length = 0;
+
+        engine.music.duck(0.4, 10_000);
+
+        expect(music.volumes).toEqual([
+            { id: 'a', volume: 0.4 },
+            { id: 'b', volume: 0.4 },
+        ]);
+    });
+
+    it('stop() silences the track still waiting for the beat to fade out', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        void engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+
+        await engine.music.stop();
+
+        expect(music.stopped).toEqual(expect.arrayContaining(['a', 'b']));
+        expect(music.released).toEqual(expect.arrayContaining(['a', 'b']));
+    });
+
+    it('an ordinary change made meanwhile fades out the track still sounding too', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        void engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+        music.fades.length = 0;
+
+        await engine.music.play('menu', 'audio/menu.m4a', { crossfadeMs: 800 });
+
+        expect(music.fades).toEqual(
+            expect.arrayContaining([
+                { id: 'a', to: 0, ms: 800 },
+                { id: 'menu', to: 1, ms: 800 },
+                { id: 'b', to: 0, ms: 800 },
+            ]),
+        );
+        // Released by the change that handed it over, once it has stopped.
+        music.finish();
+        await settle();
+        expect(music.released).toContain('a');
+    });
+
+    it('does not release a track asked for again while it was fading out', async () => {
+        const music = new FakeAligningTransport();
+        const engine = build(music);
+        await engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 0 });
+        void engine.music.play('b', 'audio/b.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+        void engine.music.play('a', 'audio/a.m4a', { crossfadeMs: 2000, alignS: 7.5 });
+        await settle();
+
+        music.finish(); // a's old voice has stopped
+        music.finish(); // b, which never sounded, has stopped
+        await settle();
+
+        expect(engine.status().playing).toBe('a');
+        expect(music.released).toEqual(['b']);
+    });
+});
