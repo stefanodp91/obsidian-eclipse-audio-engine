@@ -126,11 +126,11 @@ sequenceDiagram
     participant Host
     participant Engine as Application layer
     participant Transport as WebAudioMusicTransport
-    Host->>Engine: play(b, path, alignS 7.5, crossfadeMs 2000)
+    Host->>Engine: play(b, path, alignS 7.5, crossfadeMs 150)
     Engine->>Transport: playAligned(b, after a)
     Note over Transport: a is at 10.2 s, the next line is 15 s
-    Transport->>Transport: b.start(at 15, offset 15), fade in 15 to 17
-    Transport->>Transport: a fades out 15 to 17, a.stop(17)
+    Transport->>Transport: b.start(at 15, offset 15), fade in 15 to 15.15
+    Transport->>Transport: a fades out 15 to 15.15, a.stop(15.15)
     Transport-->>Engine: resolves when a has ended
     Engine->>Transport: release(a)
 ```
@@ -146,6 +146,18 @@ sequenceDiagram
 - **The fades.** They run on a gain of their own, between the source and the level gain, so a duck or
   a level change during the wait or the fade moves the level without undoing the change. With
   `crossfadeMs: 0` it is a cut on the line.
+- **How long the fade should be: short.** Heard on 2026-11-09 with the four chapter tracks of a host
+  application (45 s, 128 BPM, one chord cycle every 7.5 s, the same tempo and chords, a different
+  melody and voice each), changing on the line with three fades. At 2 s the change was heard as a
+  change: «Si sente la dissolvenza, non sembra continuo». At 150 ms it was heard as one piece that
+  goes on; a cut on the line was the third option and was not chosen. The measurement explains it.
+  Tracks written over the same accompaniment are still not the same signal sample by sample: the
+  correlation between the four, over their whole length, was 0.02-0.24. A linear fade between
+  signals that unrelated sums to about -2.7 dB at its midpoint (-2.06 to -2.90 dB across the six
+  pairs), and for its whole length two arrangements play at once. The line is where the melodies'
+  phrases end, so a short fade there hides the change and a long one exposes it. An equal-power
+  curve would remove the dip but not the overlap, so the engine keeps the linear ramp and the length
+  is the host's choice.
 - **Suspension.** The clock that measures the position is the context's, which stands still while
   the context is suspended. A change asked for before a suspension happens at the same musical
   point after the resume.

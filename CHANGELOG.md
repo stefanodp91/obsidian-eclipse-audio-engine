@@ -30,10 +30,20 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it, so the change never fights a level or a duck. A `play` without `alignS` sounds as before; a
   host's own transport keeps compiling, since the new port member is optional.
 
+### Verified
+
+- By ear on 2026-11-09 on a Mac, in a Chromium browser, with the four 45 s chapter tracks of a host
+  application (128 BPM, a 7.5 s chord cycle), through this release's packed tarball. The change landed
+  on the line: measured on the audio clock, the outgoing track was at 30.000 s and the incoming one
+  started there from 30.000 s. The fade length matters. A 150 ms fade on the line was heard as one
+  continuous piece, and a 2 s one as a change. The reason, and the advice to keep the fade short, are
+  in `packages/core/wiki/music-playback.md`.
+
 ### Known limitations
 
-- Not yet verified by ear on a device. Unit tests cover the scheduling (line, offset, fades, stop,
-  suspension, fallback); the listening check the release guide requires is still to be done.
+- Not yet heard on a phone. The scheduling runs on the audio clock on every platform, and unit tests
+  cover it (line, offset, fades, stop, suspension, fallback). A phone's speaker is not part of what
+  they test.
 
 ## [0.1.1] - 2026-09-22
 
